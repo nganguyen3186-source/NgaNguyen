@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <title>Canva Prompt Tool - Nga Nguyễn</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    :root{
+      --bg:#f0fdf4;--card:#ffffff;--text:#1f2937;--muted:#6b7280;
+      --green:#16a34a;--yellow:#facc15;--orange:#f59e0b;
+      --ring:rgba(34,197,94,.35)
+    }
+    body{margin:0;font-family:Inter,system-ui,Segoe UI,Arial,sans-serif;background:linear-gradient(180deg,var(--bg),#fff);color:var(--text)}
+    .wrap{max-width:900px;margin:28px auto;padding:16px}
+    h1{text-align:center;color:#166534;margin:0 0 8px}
+    .subtitle{text-align:center;color:var(--muted);margin:0 0 16px}
+    .card{background:var(--card);border-radius:14px;box-shadow:0 8px 24px rgba(0,0,0,.06);padding:18px;border:1px solid #bbf7d0}
+    label{display:block;font-weight:600;margin:12px 0 6px}
+    input,select,textarea{width:100%;padding:10px 12px;border:1px solid #d1d5db;border-radius:10px;outline:none;transition:.15s}
+    input:focus,select:focus,textarea:focus{border-color:var(--green);box-shadow:0 0 0 4px var(--ring)}
+    textarea{min-height:110px;resize:vertical}
+    .row{display:grid;grid-template-columns:1fr;gap:12px}
+    @media(min-width:720px){.row{grid-template-columns:1fr 1fr}}
+    .btns{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}
+    .btn{padding:10px 14px;border:0;border-radius:10px;font-weight:700;cursor:pointer;color:#fff}
+    .gen{background:linear-gradient(90deg,var(--green),var(--yellow))}
+    .copy{background:#15803d}
+    .reset{background:var(--orange);color:#111}
+    .toggle{display:flex;align-items:center;gap:10px;margin-top:10px}
+    .footer{text-align:center;margin-top:16px;color:#166534;font-size:13px;font-weight:600}
+    .grid3{display:grid;grid-template-columns:1fr;gap:12px;margin-top:12px}
+    @media(min-width:900px){.grid3{grid-template-columns:1fr 1fr 1fr}}
+    .outbox{border:1px dashed #d1d5db;border-radius:12px;padding:10px}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Canva Prompt Tool — Chế độ Sáng tạo ✨</h1>
+    <p class="subtitle">Tạo prompt tự nhiên, rõ ràng (không dùng AI). Đã bỏ chức năng CSV.</p>
+
+    <div class="card">
+      <div class="row">
+        <div>
+          <label for="goal">Nội dung / Mục tiêu</label>
+          <input id="goal" placeholder="VD: Ôn tập địa lí Hà Nội; từ vựng chủ đề giao thông..."/>
+        </div>
+        <div>
+          <label for="aud">Đối tượng / Độ tuổi</label>
+          <input id="aud" placeholder="VD: Học sinh lớp 4; mầm non;..."/>
+        </div>
+      </div>
+
+      <label for="mechanics">Nhiệm vụ / Số câu / Dạng câu hỏi</label>
+      <input id="mechanics" placeholder="VD: 8 câu trắc nghiệm (3 mức), 6 cặp ghép, 1 màn sắp xếp..."/>
+
+      <div class="row">
+        <div>
+          <label for="gameType">Kiểu trò chơi</label>
+          <select id="gameType">
+            <option value="quiz">Quiz trắc nghiệm</option>
+            <option value="match">Ghép cặp</option>
+            <option value="classify">Phân loại</option>
+            <option value="flip">Lật thẻ (memory)</option>
+            <option value="dragdrop">Kéo thả</option>
+            <option value="escape">Escape/Adventure</option>
+            <option value="mixed">Kết hợp nhiều dạng</option>
+          </select>
+        </div>
+        <div>
+          <label for="tone">Giọng điệu / Phong cách</label>
+          <input id="tone" placeholder="VD: vui nhộn, gần gũi, màu sắc tươi sáng"/>
+        </div>
+      </div>
+
+      <label for="extra">Yêu cầu bổ sung</label>
+      <textarea id="extra" placeholder="VD: Trang hướng dẫn, nhập tên người chơi, điểm & tổng kết, nhạc nền có thể tắt/mở..."></textarea>
+
+      <div class="toggle">
+        <input type="checkbox" id="creativeOn" checked />
+        <label for="creativeOn">Bật <strong>Chế độ sáng tạo</strong> (tool tự diễn đạt, thêm chỉ dẫn hay, giữ đúng ý của cô)</label>
+      </div>
+
+      <div class="btns">
+        <button class="btn gen" id="gen">Tạo 3 bản nháp Prompt</button>
+        <button class="btn copy" id="copyAll">Sao chép tất cả</button>
+        <button class="btn reset" id="reset">Reset</button>
+      </div>
+
+      <label style="margin-top:14px">Kết quả Prompt (3 bản nháp)</label>
+      <div class="grid3">
+        <div class="outbox"><textarea id="out1"></textarea><button class="btn copy" style="width:100%;margin-top:8px" data-t="1">Copy #1</button></div>
+        <div class="outbox"><textarea id="out2"></textarea><button class="btn copy" style="width:100%;margin-top:8px" data-t="2">Copy #2</button></div>
+        <div class="outbox"><textarea id="out3"></textarea><button class="btn copy" style="width:100%;margin-top:8px" data-t="3">Copy #3</button></div>
+      </div>
+    </div>
+
+    <div class="footer">Made with ❤️ bởi cô Nga Nguyễn – Trường TH Tân Phong 1</div>
+  </div>
+
+<script>
+function pick(arr){ return arr[Math.floor(Math.random()*arr.length)] }
+
+function buildCreative(goal,aud,mechanics,gameType,tone,extra){
+  const now = new Date().toLocaleDateString('vi-VN');
+  const lead = [
+    "Bạn là Canva Code. Hãy thiết kế trò chơi dưới đây với giọng điệu ấm áp và rõ ràng.",
+    "Hãy đóng vai Canva Code và tạo trò chơi theo mô tả sau. Ưu tiên thân thiện, dễ thao tác.",
+    "Với vai trò Canva Code, hãy dựng một trò chơi học tập theo yêu cầu dưới đây, ngắn gọn mà sinh động."
+  ];
+  const ui = [
+    "Có trang giới thiệu ngắn, nút Bắt đầu, hướng dẫn cách chơi 1-2 câu.",
+    "Thêm nút Bắt đầu, phần “How to play” ngắn gọn, dễ đọc.",
+    "Bổ sung phần hướng dẫn nhanh và nút Bắt đầu rõ ràng."
+  ];
+  const feedback = [
+    "Mỗi câu có phản hồi đúng/sai tức thì; gợi ý nhẹ nếu sai.",
+    "Hiển thị đúng/sai ngay; nếu sai, hiện gợi ý để học sinh tự sửa.",
+    "Có phản hồi ngay sau khi trả lời; khuyến khích học sinh thử lại."
+  ];
+  const scoring = [
+    "Có hệ thống điểm và màn tổng kết cuối.",
+    "Tính điểm từng câu; cuối trò chơi hiển thị bảng kết quả.",
+    "Thêm bộ đếm điểm và trang tổng kết sau cùng."
+  ];
+  const safety = [
+    "Bảo đảm ngôn ngữ lịch sự, phù hợp lứa tuổi.",
+    "Nội dung trong sáng, không có yếu tố gây nhiễu hay bạo lực.",
+    "Giữ an toàn, văn minh, từ ngữ tích cực phù hợp lứa tuổi."
+  ];
+  const gmap = {quiz:"quiz trắc nghiệm",match:"ghép cặp",classify:"phân loại",flip:"lật thẻ ghi nhớ",dragdrop:"kéo-thả",escape:"phiêu lưu nhiều màn (escape)",mixed:"kết hợp nhiều dạng"};
+
+  const base = [
+    `Mục tiêu: ${goal||"(chưa có)"}.`,
+    `Đối tượng: ${aud||"(chưa có)"}.`,
+    `Hình thức: ${gmap[gameType]||gameType}.`,
+    `Cấu trúc nhiệm vụ: ${mechanics||"(chưa có)"}.`,
+    `Phong cách: ${tone||"thân thiện, vui nhộn, màu sắc tươi sáng."}`
+  ].join("\n");
+
+  const addons = [
+    `Giao diện & hướng dẫn: ${pick(ui)}`,
+    `Phản hồi: ${pick(feedback)}`,
+    `Điểm số: ${pick(scoring)}`,
+    `An toàn: ${pick(safety)}`,
+    extra?`Yêu cầu bổ sung: ${extra}`:""
+  ].filter(Boolean).join("\n");
+
+  const ask = pick([
+    "Hãy tạo bố cục rõ ràng, văn bản ngắn gọn; tránh mật độ chữ dày.",
+    "Ưu tiên câu ngắn, cỡ chữ dễ đọc; bố cục thoáng.",
+    "Giữ nội dung cô đọng, chia màn hợp lý."
+  ]);
+
+  const t = pick(lead);
+  const content = [t, base, addons, ask, `(Tạo ${now})`].join("\n");
+  return [content, content.replace("bố cục rõ ràng","bố cục mạch lạc"), content.replace("câu ngắn","câu ngắn gọn")];
+}
+
+function buildPlain(goal,aud,mechanics,gameType,tone,extra){
+  const now = new Date().toLocaleDateString('vi-VN');
+  const gmap = {quiz:"quiz trắc nghiệm",match:"ghép cặp",classify:"phân loại",flip:"lật thẻ",dragdrop:"kéo-thả",escape:"phiêu lưu nhiều màn",mixed:"kết hợp nhiều dạng"};
+  const basic = [
+    `Bạn là Canva Code. Hãy tạo trò chơi theo mô tả.`,
+    `1) MỤC TIÊU: ${goal||"(chưa có)"}.`,
+    `2) ĐỐI TƯỢNG: ${aud||"(chưa có)"}.`,
+    `3) HÌNH THỨC: ${gmap[gameType]||gameType}.`,
+    `4) NHIỆM VỤ: ${mechanics||"(chưa có)"}.`,
+    `5) PHONG CÁCH: ${tone||"thân thiện, phù hợp HS tiểu học"}.`,
+    extra?`6) BỔ SUNG: ${extra}`:"",
+    `(Tạo ${now})`
+  ].filter(Boolean).join("\n");
+  return [basic,basic,basic];
+}
+
+function getFields(){
+  return {
+    goal: document.getElementById('goal').value.trim(),
+    aud: document.getElementById('aud').value.trim(),
+    mechanics: document.getElementById('mechanics').value.trim(),
+    gameType: document.getElementById('gameType').value,
+    tone: document.getElementById('tone').value.trim(),
+    extra: document.getElementById('extra').value.trim(),
+    creativeOn: document.getElementById('creativeOn').checked
+  };
+}
+
+function renderOutputs(arr){
+  document.getElementById('out1').value = arr[0] || '';
+  document.getElementById('out2').value = arr[1] || '';
+  document.getElementById('out3').value = arr[2] || '';
+}
+
+function gen(){
+  const f = getFields();
+  const drafts = f.creativeOn
+    ? buildCreative(f.goal,f.aud,f.mechanics,f.gameType,f.tone,f.extra)
+    : buildPlain(f.goal,f.aud,f.mechanics,f.gameType,f.tone,f.extra);
+  renderOutputs(drafts);
+}
+
+function copyTxt(id){
+  const ta = document.getElementById(id);
+  if(!ta.value.trim()) { alert('Chưa có nội dung để sao chép'); return; }
+  navigator.clipboard.writeText(ta.value).then(()=>alert('Đã sao chép!'));
+}
+
+function copyAll(){
+  const txt = [ 'out1','out2','out3' ].map(id=>document.getElementById(id).value.trim()).filter(Boolean).join('\n\n— — —\n\n');
+  if(!txt){ alert('Chưa có nội dung'); return; }
+  navigator.clipboard.writeText(txt).then(()=>alert('Đã sao chép tất cả!'));
+}
+
+function resetAll(){
+  document.getElementById('goal').value='';
+  document.getElementById('aud').value='';
+  document.getElementById('mechanics').value='';
+  document.getElementById('gameType').value='quiz';
+  document.getElementById('tone').value='';
+  document.getElementById('extra').value='';
+  document.getElementById('out1').value='';
+  document.getElementById('out2').value='';
+  document.getElementById('out3').value='';
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+// Wire events
+document.getElementById('gen').addEventListener('click', gen);
+document.getElementById('copyAll').addEventListener('click', copyAll);
+document.querySelectorAll('.outbox .btn.copy').forEach(b=>b.addEventListener('click', e=>copyTxt('out'+e.target.dataset.t)));
+document.getElementById('reset').addEventListener('click', resetAll);
+</script>
+</body>
+</html>
