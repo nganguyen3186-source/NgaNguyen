@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <title>Canva Prompt Tool - Nga Nguyễn</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 20px; background: #f0fdf4; }
+    h2 { text-align: center; color: #166534; }
+    form { background: #fff; padding: 20px; border-radius: 12px;
+           box-shadow: 0 2px 8px rgba(0,0,0,0.15); max-width: 700px; margin: auto; }
+    label { display: block; margin-top: 10px; font-weight: bold; }
+    input, select, textarea {
+      width: 100%; padding: 8px; margin-top: 5px; border: 1px solid #ccc; border-radius: 6px;
+    }
+    textarea { min-height: 100px; }
+    .buttons { text-align: center; margin-top: 15px; }
+    button {
+      margin: 6px; padding: 10px 16px; border: none; border-radius: 6px;
+      cursor: pointer; font-weight: bold;
+    }
+    .gen { background: linear-gradient(90deg,#16a34a,#facc15); color: white; }
+    .copy { background: #15803d; color: white; }
+    .csv { background: #0ea5e9; color: white; }
+    .reset { background: #f59e0b; color: black; }
+    .footer { text-align: center; margin-top: 20px; font-size: 13px; color:#166534; font-weight:600; }
+    .note { font-size: 12px; margin-top: 10px; color:#555; }
+  </style>
+</head>
+<body>
+  <h2>Công cụ tạo Prompt trò chơi Canva Code</h2>
+  <form id="promptForm">
+    <label>Nội dung / Mục tiêu chính</label>
+    <input type="text" id="goal" placeholder="VD: Ôn tập phân số, từ vựng chủ đề giao thông...">
+
+    <label>Đối tượng / Độ tuổi</label>
+    <input type="text" id="aud" placeholder="VD: học sinh lớp 4, mầm non...">
+
+    <label>Nhiệm vụ / Số câu / Dạng câu hỏi</label>
+    <input type="text" id="mechanics" placeholder="VD: 12 câu trắc nghiệm, 8 cặp ghép...">
+
+    <label>Kiểu trò chơi</label>
+    <select id="gameType">
+      <option value="quiz">Quiz trắc nghiệm</option>
+      <option value="match">Ghép cặp</option>
+      <option value="classify">Phân loại</option>
+      <option value="flip">Lật thẻ (memory)</option>
+      <option value="dragdrop">Kéo thả</option>
+      <option value="escape">Escape/Adventure</option>
+      <option value="mixed">Kết hợp nhiều dạng</option>
+    </select>
+
+    <label>Giọng điệu / Phong cách</label>
+    <input type="text" id="tone" placeholder="VD: vui nhộn, thân thiện, phù hợp tiểu học...">
+
+    <label>Yêu cầu bổ sung (không bắt buộc)</label>
+    <textarea id="extra" placeholder="VD: Trang hướng dẫn chơi, điểm & tổng kết..."></textarea>
+
+    <div class="buttons">
+      <button type="button" class="gen" onclick="generatePrompt()">Tạo Prompt (thủ công)</button>
+      <button type="button" class="copy" onclick="copyPrompt()">Sao chép Prompt</button>
+      <button type="button" class="csv" onclick="exportCSV()">Xuất CSV rỗng</button>
+      <button type="button" class="reset" onclick="resetForm()">Reset form</button>
+    </div>
+
+    <label>Kết quả Prompt</label>
+    <textarea id="result" readonly></textarea>
+
+    <div class="note">
+      Chọn dấu phân cách CSV:
+      <label><input type="radio" name="delim" value="auto" checked> Tự động</label>
+      <label><input type="radio" name="delim" value=","> Dấu phẩy (,)</label>
+      <label><input type="radio" name="delim" value=";"> Dấu chấm phẩy (;)</label>
+    </div>
+  </form>
+
+  <div class="footer">Made with ❤️ bởi cô Nga Nguyễn – Trường TH Tân Phong 1</div>
+
+  <script>
+    function buildPrompt() {
+      const goal = document.getElementById("goal").value.trim();
+      const aud = document.getElementById("aud").value.trim();
+      const mechanics = document.getElementById("mechanics").value.trim();
+      const gameType = document.getElementById("gameType").value;
+      const tone = document.getElementById("tone").value.trim();
+      const extra = document.getElementById("extra").value.trim();
+      const now = new Date().toLocaleDateString("vi-VN");
+
+      return `Bạn là Canva Code. Hãy tạo một trò chơi theo mô tả dưới đây.\n` +
+        `1) MỤC TIÊU/NỘI DUNG: ${goal||"(chưa có)"}.\n` +
+        `2) ĐỐI TƯỢNG: ${aud||"(chưa có)"}.\n` +
+        `3) HÌNH THỨC TRÒ CHƠI: ${gameType}.\n` +
+        `4) NHIỆM VỤ: ${mechanics||"(chưa có)"}.\n` +
+        `5) PHONG CÁCH: ${tone||"thân thiện, phù hợp HS tiểu học"}.\n` +
+        (extra? `6) BỔ SUNG: ${extra}\n`:``) +
+        `(Tạo ${now})`;
+    }
+
+    function generatePrompt(){
+      document.getElementById("result").value = buildPrompt();
+    }
+
+    function copyPrompt(){
+      const txt = document.getElementById("result").value;
+      if(!txt){ alert("Chưa có prompt để sao chép"); return; }
+      navigator.clipboard.writeText(txt).then(()=>alert("Đã sao chép Prompt!"));
+    }
+
+    function resetForm(){
+      document.getElementById("promptForm").reset();
+      document.getElementById("result").value="";
+    }
+
+    function exportCSV(){
+      const type = document.getElementById("gameType").value;
+      let headers;
+      switch(type){
+        case 'quiz': headers=['Question','A','B','C','D','Correct']; break;
+        case 'match': headers=['Left','Right','IsCorrect']; break;
+        case 'classify': headers=['Word','Category']; break;
+        case 'flip': headers=['Front','Back']; break;
+        case 'dragdrop': headers=['Target','Draggable1','Draggable2','Draggable3','CorrectSet']; break;
+        case 'escape': headers=['Scene','Instruction','Question','A','B','C','D','Correct','NextScene']; break;
+        case 'mixed': headers=['Type','Question','A','B','C','D','Correct','Left','Right','IsCorrect','Word','Category','Front','Back']; break;
+        default: headers=['Question','A','B','C','D','Correct'];
+      }
+
+      // chọn delimiter
+      let delim='';
+      const radios=document.querySelectorAll('input[name="delim"]');
+      radios.forEach(r=>{ if(r.checked){ if(r.value==='auto'){ const lang=(navigator.language||'en').toLowerCase(); delim=/^(vi|fr|de|it|es|pt|pl|tr)/.test(lang)?';':',';} else {delim=r.value;} } });
+      const csv=headers.join(delim)+"\r\n";
+      const bom="\ufeff";
+      const blob=new Blob([bom+csv],{type:'text/csv;charset=utf-8;'});
+      const url=URL.createObjectURL(blob);
+      const a=document.createElement("a");
+      a.href=url; a.download="canva-"+type+"-template.csv";
+      document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
+    }
+  </script>
+</body>
+</html>
