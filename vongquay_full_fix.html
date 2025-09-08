@@ -1,0 +1,467 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Vòng quay may mắn</title>
+<style>
+  :root{
+    --bg:#f7f7fb; --card:#fff; --ink:#222; --muted:#666; --brand:#6c5ce7;
+    --btn:#6c5ce7; --btn-text:#fff; --ring:#e5e7eb;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.45 system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial}
+  h1{font-size:24px;margin:16px 0;text-align:center}
+  .app{max-width:1100px;margin:0 auto;padding:16px 16px 32px}
+  .grid{display:grid;grid-template-columns:1fr 380px;gap:20px}
+  .card{background:var(--card);border:1px solid var(--ring);border-radius:14px;padding:14px;box-shadow:0 1px 2px rgba(0,0,0,.04)}
+  .wheel-wrap{position:relative;aspect-ratio:1/1}
+  canvas.wheel{width:100%;height:100%;display:block;border-radius:999px;background:radial-gradient(circle at 50% 50%,#fff 0%,#f0f2ff 65%,#e7e9ff 100%)}
+  canvas.fx{position:absolute;inset:0;pointer-events:none}
+  .pointer{
+    position:absolute;left:50%;top:-8px;transform:translateX(-50%);
+    width:0;height:0;border-left:14px solid transparent;border-right:14px solid transparent;border-bottom:20px solid #ff4757;filter:drop-shadow(0 2px 2px rgba(0,0,0,.2))
+  }
+  .result{font-size:48px;
+    position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
+    background:#ffe066;border:2px solid #f0b429;border-radius:12px;padding:10px 14px;
+    font-weight:700;text-align:center;min-width:230px;max-width:70%;
+  }
+  .controls label{font-weight:600;display:block;margin-bottom:6px}
+  textarea{
+    width:100%;min-height:220px;resize:vertical;border:1px solid var(--ring);
+    border-radius:10px;padding:10px;font:14px/1.4 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace
+  }
+  .btns{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0 6px}
+  button{
+    padding:10px 12px;border-radius:10px;border:1px solid var(--ring);background:#fff;cursor:pointer
+  }
+  button:disabled{opacity:.6;cursor:not-allowed}
+  .btn-primary{background:var(--btn);border-color:var(--btn);color:var(--btn-text);font-weight:700}
+  .btn-danger{background:#ff4757;border-color:#ff4757;color:#fff}
+  .muted{color:var(--muted);font-size:14px;margin:6px 0 10px}
+  ul.history{list-style:none;padding:0;margin:8px 0 0;max-height:200px;overflow:auto}
+  ul.history li{padding:8px 10px;border:1px solid var(--ring);border-radius:8px;margin-bottom:6px;background:#fff}
+  .small{font-size:13px;color:var(--muted)}
+  .row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:6px}
+  .toggle{display:flex;align-items:center;gap:8px;font-weight:600}
+  .toggle input{width:18px;height:18px}
+  @media (max-width: 960px){ .grid{grid-template-columns:1fr} .result{font-size:48px;max-width:85%} }
+
+  .brand-footer{
+    position:fixed;
+    left:12px; bottom:10px;
+    font-size:15px; font-style:italic;
+    color:#0a7cff;
+    opacity:.9;
+    pointer-events:none;
+    font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Noto Sans", Tahoma, sans-serif;
+    letter-spacing: .2px;
+  }
+
+</style>
+</head>
+<body>
+  <div class="app">
+    <h1>🎉 Vòng quay may mắn</h1>
+    <div class="grid">
+      <!-- BÁNH XE -->
+      <div class="card">
+        <div class="wheel-wrap" aria-live="polite">
+          <div class="pointer" aria-hidden="true"></div>
+          <canvas id="wheel" class="wheel"></canvas>
+          <canvas id="fx" class="fx"></canvas>
+          <div id="result" class="result">Nhấn “Quay!”</div>
+
+        </div>
+        <p class="small" style="margin-top:10px">
+          Gợi ý: nhập mỗi dòng 1 tên, rồi nhấn <b>Quay!</b>. Dữ liệu được lưu cục bộ trong trình duyệt.
+        </p>
+      </div>
+
+      <!-- BẢNG ĐIỀU KHIỂN -->
+      <div class="card controls">
+        <label for="names">📋 Nhập danh sách (mỗi dòng 1 tên):</label>
+        <textarea id="names" spellcheck="false" placeholder="Ví dụ:
+Nguyễn Văn A
+Trần Thị B
+Mai Ngọc Minh Thư"></textarea>
+
+        <div class="row">
+          <label class="toggle" title="Nếu bật: tên trúng sẽ bị loại khỏi vòng, có thể Hoàn tác.">
+            <input type="checkbox" id="noRepeat" />
+            Không lặp (trúng là loại khỏi vòng)
+          </label>
+
+          <button id="mute" title="Bật/tắt âm thanh">🔊 Âm thanh</button>
+        </div>
+
+        <div class="btns">
+          <button id="update">Cập nhật danh sách</button>
+          <button id="reset">Thêm lại tất cả học sinh</button>
+          <button id="spin" class="btn-primary">🎯 Quay!</button>
+          <button id="undo" title="Khôi phục người vừa bị loại">Hoàn tác</button>
+          <button id="clearHist" class="btn-danger">Xoá lịch sử</button>
+        </div>
+
+        <div class="muted">🕒 Lịch sử kết quả:</div>
+        <ul id="history" class="history"></ul>
+      </div>
+    </div>
+  </div>
+
+<script>
+(() => {
+  // ---------- DOM ----------
+  const byId = id => document.getElementById(id);
+  const wheel = byId('wheel');
+  const fx = byId('fx');
+  const wctx = wheel.getContext('2d');
+  const fctx = fx.getContext('2d');
+  const $names = byId('names');
+  const $result = byId('result');
+  const $history = byId('history');
+  const $btnSpin = byId('spin');
+  const $btnUndo = byId('undo');
+  const $noRepeat = byId('noRepeat');
+  const $mute = byId('mute');
+
+  // ---------- ÂM THANH (WebAudio) ----------
+  let audio, muted = false;
+  function getCtx(){
+    if (!audio) audio = new (window.AudioContext || window.webkitAudioContext)();
+    if (audio.state === 'suspended') audio.resume();
+    return audio;
+  }
+  function beep(time, freq, dur, type='sine', gain=0.08){
+    if (muted) return;
+    const ac = getCtx();
+    const osc = ac.createOscillator();
+    const g = ac.createGain();
+    osc.type = type;
+    osc.frequency.setValueAtTime(freq, time);
+    g.gain.setValueAtTime(gain, time);
+    g.gain.exponentialRampToValueAtTime(gain*2, time+0.03);
+    g.gain.exponentialRampToValueAtTime(0.0001, time+dur);
+    osc.connect(g).connect(ac.destination);
+    osc.start(time);
+    osc.stop(time+dur+0.05);
+  }
+  function noiseBurst(time, dur=0.25, gain=0.06){
+    if (muted) return;
+    const ac = getCtx();
+    const bufferSize = ac.sampleRate * dur;
+    const buffer = ac.createBuffer(1, bufferSize, ac.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i=0;i<bufferSize;i++) data[i] = (Math.random()*2-1) * (1 - i/bufferSize);
+    const src = ac.createBufferSource();
+    src.buffer = buffer;
+    const g = ac.createGain();
+    g.gain.value = gain;
+    src.connect(g).connect(ac.destination);
+    src.start(time);
+  }
+  function playFanfare(){
+    const ac = getCtx();
+    const t = ac.currentTime + 0.01;
+    const notes = [523.25,659.25,783.99,1046.50]; // C5 E5 G5 C6
+    notes.forEach((f,i)=>beep(t + i*0.09, f, 0.18, i%2?'triangle':'square', 0.08));
+    ['sawtooth','square','triangle'].forEach((type,k)=>{
+      beep(t+0.36, 523.25, 0.35, type, 0.06);
+      beep(t+0.36, 659.25, 0.35, type, 0.06);
+      beep(t+0.36, 783.99, 0.35, type, 0.06);
+    });
+    noiseBurst(t+0.05, 0.3, 0.08);
+  }
+  $mute.addEventListener('click', ()=>{
+    muted = !muted;
+    localStorage.setItem('wheel_muted', JSON.stringify(!!muted));
+    $mute.textContent = muted ? '🔇 Tắt âm thanh' : '🔊 Âm thanh';
+  });
+
+  // ---------- CONFETTI ----------
+  let confettis = [], confettiRAF = null;
+  function colorFor(i){
+    const hues = [340,10,25,45,70,95,160,200,225,255,285,310];
+    return `hsl(${hues[i % hues.length]} 80% 55%)`;
+  }
+  function startConfetti(){
+    confettis.length = 0;
+    const rect = fx.getBoundingClientRect();
+    const w = rect.width, h = rect.height;
+    const count = Math.max(120, Math.floor(w/6));
+    for (let i=0;i<count;i++){
+      const angle = Math.random()*Math.PI - Math.PI/2;
+      const speed = 5 + Math.random()*8;
+      confettis.push({
+        x: w/2, y: h/2,
+        vx: Math.cos(angle)*speed,
+        vy: Math.sin(angle)*speed - 2,
+        g: 0.15 + Math.random()*0.2,
+        w: 6 + Math.random()*6,
+        h: 10 + Math.random()*10,
+        r: Math.random()*Math.PI,
+        vr: (Math.random()-0.5)*0.3,
+        col: colorFor(i),
+        life: 120 + Math.random()*40
+      });
+    }
+    if (!confettiRAF) confettiRAF = requestAnimationFrame(drawConfetti);
+  }
+  function drawConfetti(){
+    const ratio = window.devicePixelRatio || 1;
+    fctx.setTransform(1,0,0,1,0,0);
+    fctx.clearRect(0,0,fx.width,fx.height);
+    fctx.setTransform(ratio,0,0,ratio,0,0);
+    const w = fx.width/ratio, h = fx.height/ratio;
+    confettis.forEach(p=>{
+      p.x += p.vx; p.y += p.vy; p.vy += p.g; p.r += p.vr; p.life--;
+      fctx.save();
+      fctx.translate(p.x, p.y);
+      fctx.rotate(p.r);
+      fctx.fillStyle = p.col;
+      fctx.fillRect(-p.w/2, -p.h/2, p.w, p.h);
+      fctx.restore();
+    });
+    confettis = confettis.filter(p => p.life>0 && p.y < h+30 && p.x>-30 && p.x<w+30);
+    if (confettis.length){
+      confettiRAF = requestAnimationFrame(drawConfetti);
+    } else {
+      cancelAnimationFrame(confettiRAF); confettiRAF = null;
+      fctx.clearRect(0,0,fx.width,fx.height);
+    }
+  }
+
+  // ---------- KÍCH THƯỚC CANVAS ----------
+  function fitCanvas(){
+    const cssSize = Math.floor(wheel.parentElement.clientWidth);
+    const ratio = window.devicePixelRatio || 1;
+    wheel.width = cssSize * ratio;
+    wheel.height = cssSize * ratio;
+    wheel.style.width = wheel.style.height = '100%';
+    wctx.setTransform(ratio,0,0,ratio,0,0);
+    fx.width = cssSize * ratio;
+    fx.height = cssSize * ratio;
+    fx.style.width = fx.style.height = '100%';
+    fctx.setTransform(ratio,0,0,ratio,0,0);
+  }
+
+  // ---------- RNG ----------
+  function randInt(max){
+    if (crypto?.getRandomValues){
+      const buf = new Uint32Array(1); crypto.getRandomValues(buf);
+      return buf[0] % max;
+    }
+    return Math.floor(Math.random()*max);
+  }
+
+  // ---------- STATE ----------
+  let state = {
+    names: [],
+    originalNames: [],
+    history: [],
+    removedStack: [], // {name, index}
+    angle: -Math.PI/2,
+    spinning: false,
+    noRepeat: true
+  };
+
+  // ---------- VẼ BÁNH ----------
+  function drawWheel(){
+    fitCanvas();
+    const {names, angle} = state;
+    const ratio = window.devicePixelRatio || 1;
+    const R = Math.min(wheel.width, wheel.height) / (2 * ratio);
+    const cx = R, cy = R;
+    wctx.clearRect(0,0,wheel.width, wheel.height);
+    if (!names.length){
+      wctx.beginPath(); wctx.arc(cx,cy,R-6,0,2*Math.PI);
+      wctx.fillStyle = '#f1f5f9'; wctx.fill(); wctx.strokeStyle = '#e2e8f0'; wctx.lineWidth = 2; wctx.stroke();
+      updateButtons(); return;
+    }
+    const slice = 2*Math.PI / names.length;
+    for (let i=0;i<names.length;i++){
+      const start = angle + i*slice;
+      const end = start + slice;
+      wctx.beginPath();
+      wctx.moveTo(cx,cy);
+      wctx.arc(cx,cy,R-6,start,end);
+      wctx.closePath();
+      wctx.fillStyle = colorFor(i);
+      wctx.fill();
+      wctx.strokeStyle = '#fff';
+      wctx.lineWidth = 2;
+      wctx.stroke();
+      wctx.save();
+      wctx.translate(cx,cy);
+      wctx.rotate((start+end)/2);
+      wctx.textAlign = 'right';
+      wctx.fillStyle = '#222';
+      wctx.font = '16px system-ui, -apple-system, Segoe UI, Roboto';
+      const txt = names[i];
+      wctx.fillText(txt, R-16, 5);
+      wctx.restore();
+    }
+    wctx.beginPath();
+    wctx.arc(cx,cy,R-6,0,2*Math.PI);
+    wctx.lineWidth = 4; wctx.strokeStyle = '#e5e7eb'; wctx.stroke();
+    updateButtons();
+  }
+
+  // ---------- LƯU/PHỤC HỒI ----------
+  function save(){
+    localStorage.setItem('wheel_names', JSON.stringify(state.names));
+    localStorage.setItem('wheel_history', JSON.stringify(state.history));
+    localStorage.setItem('wheel_removed', JSON.stringify(state.removedStack));
+    localStorage.setItem('wheel_norepeat', JSON.stringify(!!state.noRepeat));
+    localStorage.setItem('wheel_muted', JSON.stringify(!!muted));
+  }
+
+  // ---------- DANH SÁCH ----------
+  function parseNames(text){
+    return text.split(/\r?\n/).map(s => s.trim()).filter(Boolean);
+  }
+  function setNames(arr, markOriginal=false){
+    state.names = arr.slice();
+    if (markOriginal) state.originalNames = arr.slice();
+    save();
+    drawWheel();
+    updateButtons();
+  }
+
+  // ---------- LỊCH SỬ ----------
+  function pushHistory(name){
+    state.history.unshift({name, at: new Date().toLocaleString()});
+    state.history = state.history.slice(0,100);
+    save();
+    renderHistory();
+  }
+  function renderHistory(){
+    $history.innerHTML = state.history
+      .map(item => `<li>🎉 <strong>${escapeHTML(item.name)}</strong><div class="small">${item.at}</div></li>`)
+      .join('');
+  }
+
+  // ---------- QUAY ----------
+  function spin(){
+    if (state.spinning || state.names.length === 0) return;
+    state.spinning = true; updateButtons();
+    const n = state.names.length;
+    const slice = 2*Math.PI / n;
+    const plannedIndex = randInt(n);
+    const targetAngle = -Math.PI/2 - (plannedIndex * slice) - slice/2;
+    const extraTurns = 5 + randInt(4);
+    const endAngle = targetAngle - 2*Math.PI*extraTurns;
+    const start = performance.now();
+    const duration = 3500 + randInt(800);
+    const startAngle = state.angle;
+    function easeOutCubic(t){ return 1 - Math.pow(1-t,3); }
+    function frame(now){
+      const p = Math.min(1, (now - start)/duration);
+      const eased = easeOutCubic(p);
+      state.angle = startAngle + (endAngle - startAngle) * eased;
+      drawWheel();
+      if (p < 1) { requestAnimationFrame(frame); }
+      else {
+        state.spinning = false;
+        const a = ((state.angle % (2*Math.PI)) + 2*Math.PI) % (2*Math.PI);
+        let idx = Math.floor((( -Math.PI/2 - a - slice/2 ) % (2*Math.PI) + 2*Math.PI) / slice);
+        idx = ((idx % n) + n) % n;
+        const winner = state.names[idx];
+        $result.innerHTML = `<span class="winner">🎉 ${winner}</span>`;
+        pushHistory(winner);
+        playFanfare();
+        startConfetti();
+        if (state.noRepeat){
+          state.removedStack.push({name: winner, index: idx});
+          state.names.splice(idx, 1);
+          $names.value = state.names.join('\n');
+          save();
+          drawWheel();
+        }
+        updateButtons();
+      }
+    }
+    requestAnimationFrame(frame);
+  }
+
+  // ---------- HOÀN TÁC ----------
+  function undo(){
+    if (!state.removedStack.length) return;
+    const {name, index} = state.removedStack.pop();
+    const insertIdx = Math.min(Math.max(index, 0), state.names.length);
+    state.names.splice(insertIdx, 0, name);
+    $names.value = state.names.join('\n');
+    save(); drawWheel();
+    $result.innerHTML = `<span style="font-size:20px">↩️ Đã hoàn tác: ${name} trở lại vòng</span>`;
+    updateButtons();
+  }
+
+  // ---------- TIỆN ÍCH ----------
+  function escapeHTML(s){
+    return s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]));
+  }
+  function updateButtons(){
+    $btnSpin.disabled = state.spinning || state.names.length===0;
+    $btnUndo.disabled = state.removedStack.length===0;
+  }
+
+  // ---------- SỰ KIỆN ----------
+  byId('update').addEventListener('click', () => {
+    const arr = parseNames($names.value);
+    setNames(arr);
+    $result.innerHTML = arr.length ? `<span style="font-size:20px">Đã cập nhật danh sách</span>` : 'Nhấn “Quay!”';
+  });
+  byId('reset').addEventListener('click', () => {
+    if (state.originalNames.length){
+      $names.value = state.originalNames.join('\n');
+      setNames(state.originalNames);
+      $result.innerHTML = `<span style="font-size:20px">Đã khôi phục danh sách gốc</span>`;
+    }
+  });
+  byId('clearHist').addEventListener('click', () => {
+    state.history = [];
+    save(); renderHistory();
+  });
+  $btnSpin.addEventListener('click', spin);
+  $btnUndo.addEventListener('click', undo);
+  $noRepeat.addEventListener('change', () => {
+    state.noRepeat = $noRepeat.checked; save();
+  });
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) spin();
+    if (e.key === 'z' && (e.ctrlKey || e.metaKey)) undo();
+  });
+  window.addEventListener('resize', ()=>{ fitCanvas(); drawWheel(); });
+
+  // ---------- KHỞI TẠO ----------
+  (function init(){
+    const saved = JSON.parse(localStorage.getItem('wheel_names')||'[]');
+    const savedHist = JSON.parse(localStorage.getItem('wheel_history')||'[]');
+    const savedRemoved = JSON.parse(localStorage.getItem('wheel_removed')||'[]');
+    const savedNoRepeat = JSON.parse(localStorage.getItem('wheel_norepeat')||'true');
+    const savedMuted = JSON.parse(localStorage.getItem('wheel_muted')||'false');
+    muted = !!savedMuted;
+    $mute.textContent = muted ? '🔇 Tắt âm thanh' : '🔊 Âm thanh';
+    const demo = [
+      'Vũ Thị Bảo Ngọc','Vũ Huy Đức Nhân','Đinh Minh Nhật','Trần An Nhiên',
+      'Nguyễn Quỳnh Như','Vũ Đình Phúc','Nguyễn Đại Quang','Mai Danh Đức Thiện',
+      'Mai Ngọc Minh Thư','Trần Thị Nhã Thư','Lê Bảo Trâm','Nguyễn Minh Tuấn'
+    ];
+    const initial = saved.length ? saved : demo;
+    state.originalNames = initial.slice();
+    state.removedStack = Array.isArray(savedRemoved) ? savedRemoved : [];
+    state.noRepeat = savedNoRepeat !== false;
+    $noRepeat.checked = !!state.noRepeat;
+    $names.value = initial.join('\n');
+    setNames(initial, false);
+    state.history = Array.isArray(savedHist) ? savedHist : [];
+    renderHistory();
+    fitCanvas(); drawWheel();
+  })();
+})();
+</script>
+
+<div class="brand-footer">Nga Nguyễn - Trường TH Tân Phong 1</div>
+</body>
+</html>
