@@ -1,0 +1,409 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Vòng quay đôi: Nhóm & Nhiệm vụ</title>
+<style>
+  :root{
+    --bg:#f7f7fb; --card:#fff; --ink:#222; --muted:#666; --brand:#6c5ce7;
+    --btn:#6c5ce7; --btn-text:#fff; --ring:#e5e7eb;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.45 system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial}
+  h1{font-size:24px;margin:16px 0;text-align:center}
+  .app{max-width:1000px;margin:0 auto;padding:10px 10px 20px}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+  .card{background:var(--card);border:1px solid var(--ring);border-radius:14px;padding:14px;box-shadow:0 1px 2px rgba(0,0,0,.04)}
+  .wheel-wrap{position:relative;aspect-ratio:1/1;max-width:360px;margin:0 auto}
+  canvas.wheel{width:100%;height:100%;display:block;border-radius:999px;background:radial-gradient(circle at 50% 50%,#fff 0%,#f0f2ff 65%,#e7e9ff 100%)}
+  canvas.fx{position:absolute;inset:0;pointer-events:none}
+  .pointer{
+    position:absolute;left:50%;top:-8px;transform:translateX(-50%);
+    width:0;height:0;border-left:14px solid transparent;border-right:14px solid transparent;border-bottom:20px solid #ff4757;filter:drop-shadow(0 2px 2px rgba(0,0,0,.2))
+  }
+  .wheel-title{font-weight:700;text-align:center;margin:6px 0 10px}
+  .controls{margin-top:8px;display:flex;flex-wrap:wrap;gap:8px;justify-content:center}
+  button{padding:10px 12px;border-radius:10px;border:1px solid var(--ring);background:#fff;cursor:pointer}
+  button:disabled{opacity:.6;cursor:not-allowed}
+  .btn-primary{background:var(--btn);border-color:var(--btn);color:var(--btn-text);font-weight:700}
+  .btn-danger{background:#ff4757;border-color:#1e90ff;color:#fff}
+  table{width:100%;border-collapse:collapse;margin-top:10px}
+  th, td{border:1px solid var(--ring);padding:8px 10px;text-align:left}
+  th{background:#f3f4f6}
+  .muted{color:var(--muted);font-size:14px;margin-top:4px}
+  .winner{font-size:28px;font-weight:800}
+  @media (max-width: 960px){ .grid{grid-template-columns:1fr} }
+
+  
+  .center-result{
+    position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
+    background:rgba(255,240,150,.96);
+    border:2px solid #f0b429;border-radius:10px;
+    padding:12px 20px;text-align:center;
+    font-weight:800;font-size:36px;
+    white-space:nowrap;
+    box-shadow:0 4px 12px rgba(0,0,0,.15);
+    display:none;
+  }
+
+
+
+  
+  .footer-note{
+    position:fixed;
+    top:6px; left:10px;
+    font-size:14px;
+    color:#1e90ff;
+    font-style:italic;
+    margin:0;
+    z-index:10000;
+  }
+
+
+</style>
+</head>
+<body>
+<div class="footer-note">Tạo bởi cô Nga Nguyễn - Trường TH Tân Phong 1</div>
+
+  <div class="app">
+    <h1>🎯 Vòng quay đôi: Chọn ngẫu nhiên Nhóm & Nhiệm vụ</h1>
+    <div class="grid">
+      <!-- WHEEL 1 -->
+      <div class="card">
+        <div class="wheel-title">Vòng quay 1 — Nhóm</div>
+        <div class="wheel-wrap">
+          <div class="pointer" aria-hidden="true"></div>
+          <canvas id="wheel1" class="wheel"></canvas>
+          <canvas id="fx1" class="fx"></canvas>
+          <div id="center1" class="center-result" aria-live="polite"></div>
+        </div>
+        <div id="result1" class="muted">Sẵn sàng…</div>
+      </div>
+
+      <!-- WHEEL 2 -->
+      <div class="card">
+        <div class="wheel-title">Vòng quay 2 — Nhiệm vụ</div>
+        <div class="wheel-wrap">
+          <div class="pointer" aria-hidden="true"></div>
+          <canvas id="wheel2" class="wheel"></canvas>
+          <canvas id="fx2" class="fx"></canvas>
+          <div id="center2" class="center-result" aria-live="polite"></div>
+        </div>
+        <div id="result2" class="muted">Sẵn sàng…</div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:16px">
+      <div class="controls">
+        <button id="spin" class="btn-primary">🎰 Quay cả hai</button>
+        <button id="undo">↩️ Hoàn tác</button>
+        <button id="reset" class="btn-danger">🔄 Đặt lại</button>
+        <button id="mute">🔊 Âm thanh</button>
+      </div>
+      <div class="muted" style="text-align:center;margin-top:6px">
+        Khi dừng: Nhóm & Nhiệm vụ được chọn sẽ bị loại (không lặp) và hiển thị bên dưới.
+      </div>
+      <table id="table">
+        <thead>
+          <tr><th>#</th><th>Nhóm</th><th>Nhiệm vụ</th><th>Thời gian</th></tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+
+<script>
+(() => {
+  // ======= DOM =======
+  const $ = id => document.getElementById(id);
+  const wheel1 = $('wheel1'), wctx1 = wheel1.getContext('2d'), fx1 = $('fx1'), fctx1 = fx1.getContext('2d');
+  const wheel2 = $('wheel2'), wctx2 = wheel2.getContext('2d'), fx2 = $('fx2'), fctx2 = fx2.getContext('2d');
+  const res1 = $('result1'), res2 = $('result2');
+  const center1 = $('center1'), center2 = $('center2');
+  const btnSpin = $('spin'), btnUndo = $('undo'), btnReset = $('reset'), btnMute = $('mute');
+  const tbody = document.querySelector('#table tbody');
+
+  // ======= STATE =======
+  const initialGroups = Array.from({length:8}, (_,i)=>`Nhóm ${i+1}`);
+  const tasksBase = ['Công nghiệp','Nông nghiệp','Giao thông','Du lịch'];
+  const initialTasks = [...tasksBase, ...tasksBase]; // 4 nhiệm vụ x2 = 8 lát
+
+  let state = {
+    groups: [],
+    tasks: [],
+    angle1: -Math.PI/2,
+    angle2: -Math.PI/2,
+    spinning: false,
+    muted: false,
+    history: [], // {group, task, at}
+    undoStack: [] // {group, gIndex, task, tIndex}
+  };
+
+  // ======= INIT =======
+  function load(){
+    const g = JSON.parse(localStorage.getItem('dual_groups')||'[]');
+    const t = JSON.parse(localStorage.getItem('dual_tasks')||'[]');
+    const h = JSON.parse(localStorage.getItem('dual_history')||'[]');
+    const m = JSON.parse(localStorage.getItem('dual_muted')||'false');
+    state.groups = g.length ? g : initialGroups.slice();
+    state.tasks = t.length ? t : initialTasks.slice();
+    state.history = Array.isArray(h) ? h : [];
+    state.muted = !!m;
+    btnMute.textContent = state.muted ? '🔇 Tắt âm thanh' : '🔊 Âm thanh';
+  }
+  function save(){
+    localStorage.setItem('dual_groups', JSON.stringify(state.groups));
+    localStorage.setItem('dual_tasks', JSON.stringify(state.tasks));
+    localStorage.setItem('dual_history', JSON.stringify(state.history));
+    localStorage.setItem('dual_muted', JSON.stringify(state.muted));
+  }
+
+  // ======= CANVAS LAYOUT =======
+  function fitCanvas(canvas, ctx){
+    const css = Math.floor(canvas.parentElement.clientWidth);
+    const ratio = window.devicePixelRatio || 1;
+    canvas.width = css * ratio;
+    canvas.height = css * ratio;
+    canvas.style.width = canvas.style.height = '100%';
+    ctx.setTransform(ratio,0,0,ratio,0,0);
+  }
+
+  // ======= DRAW WHEELS =======
+  function sliceColor(i){
+    const hues = [340,10,25,45,70,95,160,200,225,255,285,310];
+    return `hsl(${hues[i % hues.length]} 80% 60%)`;
+  }
+  function drawWheelGeneric(canvas, ctx, angle, labels){
+    fitCanvas(canvas, ctx);
+    const ratio = window.devicePixelRatio || 1;
+    const R = Math.min(canvas.width, canvas.height) / (2 * ratio);
+    const cx = R, cy = R;
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    if (!labels.length){
+      ctx.beginPath(); ctx.arc(cx,cy,R-6,0,2*Math.PI);
+      ctx.fillStyle = '#f1f5f9'; ctx.fill(); ctx.strokeStyle = '#e2e8f0'; ctx.lineWidth = 2; ctx.stroke();
+      return;
+    }
+    const slice = 2*Math.PI / labels.length;
+    for (let i=0;i<labels.length;i++){
+      const start = angle + i*slice, end = start + slice;
+      ctx.beginPath();
+      ctx.moveTo(cx,cy);
+      ctx.arc(cx,cy,R-6,start,end);
+      ctx.closePath();
+      ctx.fillStyle = sliceColor(i);
+      ctx.fill();
+      ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.stroke();
+
+      ctx.save();
+      ctx.translate(cx,cy);
+      ctx.rotate((start+end)/2);
+      ctx.textAlign = 'right';
+      ctx.fillStyle = '#222';
+      ctx.font = '24px system-ui, -apple-system, Segoe UI, Roboto';
+      ctx.fillText(labels[i], R-16, 5);
+      ctx.restore();
+    }
+    ctx.beginPath();
+    ctx.arc(cx,cy,R-6,0,2*Math.PI);
+    ctx.lineWidth = 4; ctx.strokeStyle = '#e5e7eb'; ctx.stroke();
+  }
+
+  // ======= AUDIO (WebAudio) =======
+  let ac;
+  function audioCtx(){
+    if (!ac) ac = new (window.AudioContext || window.webkitAudioContext)();
+    if (ac.state==='suspended') ac.resume();
+    return ac;
+  }
+  function beep(t, f, d, type='triangle', gain=0.06){
+    if (state.muted) return;
+    const ctx = audioCtx();
+    const osc = ctx.createOscillator();
+    const g = ctx.createGain();
+    osc.type = type;
+    osc.frequency.setValueAtTime(f, t);
+    g.gain.setValueAtTime(gain, t);
+    g.gain.exponentialRampToValueAtTime(gain*2, t+0.03);
+    g.gain.exponentialRampToValueAtTime(0.0001, t+d);
+    osc.connect(g).connect(ctx.destination);
+    osc.start(t);
+    osc.stop(t+d+0.05);
+  }
+  function fanfare(){
+    const ctx = audioCtx();
+    const t = ctx.currentTime + 0.01;
+    [523.25,659.25,783.99,1046.5].forEach((f,i)=>beep(t+i*0.09, f, 0.18, i%2?'square':'sawtooth', 0.07));
+  }
+
+  // ======= CONFETTI =======
+  function startConfetti(fxCanvas, fxCtx){
+    let parts = [];
+    const rect = fxCanvas.getBoundingClientRect();
+    const w = rect.width, h = rect.height;
+    const count = Math.max(120, Math.floor(w/6));
+    for (let i=0;i<count;i++){
+      const angle = Math.random()*Math.PI - Math.PI/2;
+      const speed = 5 + Math.random()*8;
+      parts.push({
+        x:w/2, y:h/2, vx:Math.cos(angle)*speed, vy:Math.sin(angle)*speed-2,
+        g:0.15+Math.random()*0.2, w:6+Math.random()*6, h:10+Math.random()*10,
+        r:Math.random()*Math.PI, vr:(Math.random()-0.5)*0.3,
+        col:sliceColor(i), life:120+Math.random()*40
+      });
+    }
+    const ratio = window.devicePixelRatio || 1;
+    fxCtx.setTransform(ratio,0,0,ratio,0,0);
+
+    function frame(){
+      fxCtx.setTransform(1,0,0,1,0,0);
+      fxCtx.clearRect(0,0,fxCanvas.width,fxCanvas.height);
+      fxCtx.setTransform(ratio,0,0,ratio,0,0);
+      const W = fxCanvas.width/ratio, H = fxCanvas.height/ratio;
+      parts.forEach(p=>{
+        p.x+=p.vx; p.y+=p.vy; p.vy+=p.g; p.r+=p.vr; p.life--;
+        fxCtx.save(); fxCtx.translate(p.x,p.y); fxCtx.rotate(p.r);
+        fxCtx.fillStyle=p.col; fxCtx.fillRect(-p.w/2,-p.h/2,p.w,p.h); fxCtx.restore();
+      });
+      parts = parts.filter(p=>p.life>0 && p.y<H+30 && p.x>-30 && p.x<W+30);
+      if (parts.length) requestAnimationFrame(frame);
+      else { fxCtx.clearRect(0,0,fxCanvas.width,fxCanvas.height); }
+    }
+    requestAnimationFrame(frame);
+  }
+
+  // ======= RNG =======
+  function randInt(max){
+    if (crypto?.getRandomValues){
+      const b=new Uint32Array(1); crypto.getRandomValues(b);
+      return b[0]%max;
+    }
+    return Math.floor(Math.random()*max);
+  }
+
+  // ======= SPIN LOGIC (plannedIndex) =======
+  function planSpin(angleRef, labels){
+    if (!labels.length) return {plannedIndex: -1, endAngle: angleRef, duration: 0};
+    const n = labels.length;
+    const slice = 2*Math.PI / n;
+    const plannedIndex = randInt(n);
+    const targetAngle = -Math.PI/2 - (plannedIndex * slice) - slice/2;
+    const extra = 5 + randInt(4);
+    const endAngle = targetAngle - 2*Math.PI*extra;
+    return {plannedIndex, endAngle, duration: 3200 + randInt(900)};
+  }
+
+  function animateDual(p1, p2){
+    state.spinning = true; updateButtons();
+    const start = performance.now();
+    const startA1 = state.angle1, startA2 = state.angle2;
+    const d1 = p1.duration, d2 = p2.duration;
+    function easeOutCubic(t){ return 1-Math.pow(1-t,3); }
+    function frame(now){
+      const q1 = Math.min(1, (now-start)/d1);
+      const q2 = Math.min(1, (now-start)/d2);
+      state.angle1 = startA1 + (p1.endAngle - startA1) * easeOutCubic(q1);
+      state.angle2 = startA2 + (p2.endAngle - startA2) * easeOutCubic(q2);
+      draw();
+      if (q1<1 || q2<1){ requestAnimationFrame(frame); }
+      else {
+        state.spinning = false;
+        state.angle1 = p1.endAngle; state.angle2 = p2.endAngle; // lock exact
+        const winGroup = state.groups[p1.plannedIndex];
+        const winTask  = state.tasks[p2.plannedIndex];
+        res1.innerHTML = `<span class="winner">🎉 ${winGroup??'—'}</span>`;
+        res2.innerHTML = `<span class="winner">🎉 ${winTask??'—'}</span>`;
+        center1.innerHTML = `🎉 ${winGroup??'—'}`;
+        center2.innerHTML = `🎉 ${winTask??'—'}`;
+        center1.style.display='block';
+        center2.style.display='block';
+        // save undo info
+        state.undoStack.push({group: winGroup, gIndex: p1.plannedIndex, task: winTask, tIndex: p2.plannedIndex});
+        // remove picked slices
+        if (p1.plannedIndex>=0) state.groups.splice(p1.plannedIndex,1);
+        if (p2.plannedIndex>=0) state.tasks.splice(p2.plannedIndex,1);
+        const at = new Date().toLocaleString();
+        state.history.unshift({group: winGroup, task: winTask, at});
+        renderTable();
+        save();
+        // FX
+        fanfare();
+        startConfetti(fx1, fctx1);
+        startConfetti(fx2, fctx2);
+        updateButtons();
+      }
+    }
+    requestAnimationFrame(frame);
+  }
+
+  // ======= RENDER TABLE =======
+  function renderTable(){
+    tbody.innerHTML = state.history.map((it,idx)=>{
+      const n = state.history.length - idx;
+      return `<tr><td>${n}</td><td>${it.group??''}</td><td>${it.task??''}</td><td>${it.at}</td></tr>`
+    }).join('');
+  }
+
+  // ======= DRAW ALL =======
+  function draw(){
+    drawWheelGeneric(wheel1, wctx1, state.angle1, state.groups);
+    drawWheelGeneric(wheel2, wctx2, state.angle2, state.tasks);
+  }
+
+  // ======= BUTTON STATES =======
+  function updateButtons(){
+    btnSpin.disabled = state.spinning || state.groups.length===0 || state.tasks.length===0;
+    btnUndo.disabled = state.undoStack.length===0 || state.spinning;
+  }
+
+  // ======= EVENTS =======
+  btnSpin.addEventListener('click', ()=>{
+    if (state.spinning) return;
+    if (!state.groups.length || !state.tasks.length) return;
+    const p1 = planSpin(state.angle1, state.groups);
+    const p2 = planSpin(state.angle2, state.tasks);
+    center1.style.display='none'; center2.style.display='none';
+    center1.innerHTML=''; center2.innerHTML='';
+    animateDual(p1, p2);
+  });
+  btnUndo.addEventListener('click', ()=>{
+    if (!state.undoStack.length || state.spinning) return;
+    const last = state.undoStack.pop();
+    if (last.group!=null){
+      const idx = Math.min(Math.max(last.gIndex,0), state.groups.length);
+      state.groups.splice(idx,0,last.group);
+      res1.textContent = `↩️ Hoàn tác nhóm: ${last.group}`;
+    }
+    if (last.task!=null){
+      const idx2 = Math.min(Math.max(last.tIndex,0), state.tasks.length);
+      state.tasks.splice(idx2,0,last.task);
+      res2.textContent = `↩️ Hoàn tác nhiệm vụ: ${last.task}`;
+    }
+    save(); draw(); renderTable(); updateButtons();
+  });
+  btnReset.addEventListener('click', ()=>{
+    state.groups = initialGroups.slice();
+    state.tasks = initialTasks.slice();
+    state.history = [];
+    state.undoStack = [];
+    res1.textContent = 'Đã đặt lại.';
+    res2.textContent = 'Đã đặt lại.';
+    save(); draw(); renderTable(); updateButtons();
+  });
+  btnMute.addEventListener('click', ()=>{
+    state.muted = !state.muted;
+    btnMute.textContent = state.muted ? '🔇 Tắt âm thanh' : '🔊 Âm thanh';
+    save();
+  });
+  window.addEventListener('resize', ()=>{ draw(); fitCanvas(fx1,fctx1); fitCanvas(fx2,fctx2); });
+
+  // ======= START =======
+  load();
+  fitCanvas(wheel1,wctx1); fitCanvas(fx1,fctx1);
+  fitCanvas(wheel2,wctx2); fitCanvas(fx2,fctx2);
+  draw(); renderTable(); updateButtons();
+})();
+</script>
+</body>
+</html>
